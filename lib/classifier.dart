@@ -8,8 +8,8 @@ class Classifier {
   Interpreter? _interpreter;
   List<String>? _labels;
 
-  static const String _modelFile = 'assets/model.tflite';
-  static const String _labelsFile = 'assets/labels.txt';
+  static const String _modelFile = 'assets/mobilenet_v4.tflite';
+  static const String _labelsFile = 'assets/labels_v4.txt';
 
   Classifier() {
     _loadModel();
@@ -64,19 +64,21 @@ class Classifier {
         224,
         (y) => List.generate(224, (x) {
           var pixel = resizedImage.getPixel(x, y);
-          // 정규화 (Normalization): (값 - 127.5) / 127.5 -> [-1, 1] 범위로 변환
+          // 정규화 (Normalization): ImageNet 표준 (mean, std)
+          // (pixel / 255.0 - mean) / std
           return [
-            (pixel.r - 127.5) / 127.5,
-            (pixel.g - 127.5) / 127.5,
-            (pixel.b - 127.5) / 127.5,
+            ((pixel.r / 255.0) - 0.485) / 0.229,
+            ((pixel.g / 255.0) - 0.456) / 0.224,
+            ((pixel.b / 255.0) - 0.406) / 0.225,
           ];
         }),
       ),
     );
 
     // 출력 텐서 생성 (Output tensor)
-    // 형태: [1, 1001] (라벨 개수에 따라 다름)
-    var outputBuffer = List.filled(1 * 1001, 0.0).reshape([1, 1001]);
+    // 출력 텐서 생성 (Output tensor)
+    // 형태: [1, 1000] (MobileNetV4는 보통 1000개 클래스)
+    var outputBuffer = List.filled(1 * 1000, 0.0).reshape([1, 1000]);
 
     // 2. 추론 실행 (Run inference)
     _interpreter!.run(input, outputBuffer);
